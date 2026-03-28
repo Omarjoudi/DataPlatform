@@ -5,14 +5,13 @@ from typing import List, Optional
 
 # Import our database connection and our new DB model
 from app.core.database import get_db
-from app.models.task import DBTask
+from app.models.playing_with_neon import DBPwn
 
 router = APIRouter()
 
 class TaskCreate(BaseModel):
-    title: str
-    description: Optional[str] = None
-    completed: bool = False
+    name: str
+    value: float
 
 class TaskResponse(TaskCreate):
     id: int
@@ -24,31 +23,43 @@ class TaskResponse(TaskCreate):
 
 
 @router.get("/", response_model=List[TaskResponse])
-def get_all_tasks(db: Session = Depends(get_db)):
+def get_all_pwn(db: Session = Depends(get_db)):
     """Retrieve all tasks from Postgres."""
-    tasks = db.query(DBTask).all()
+    tasks = db.query(DBPwn).all()
     return tasks
 
 
-@router.get("/{task_id}", response_model=TaskResponse)
-def get_task(task_id: int, db: Session = Depends(get_db)):
+@router.get("/{pwn_id}", response_model=TaskResponse)
+def get_pwn(pwn_id: int, db: Session = Depends(get_db)):
     """Retrieve a specific task by its ID."""
-    task = db.query(DBTask).filter(DBTask.id == task_id).first()
+    task = db.query(DBPwn).filter(DBPwn.id == pwn_id).first()
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
 
 
 @router.post("/", response_model=TaskResponse)
-def create_task(task: TaskCreate, db: Session = Depends(get_db)):
+def create_pwn(task: TaskCreate, db: Session = Depends(get_db)):
     """Create a new task in Postgres."""
     # Convert Pydantic model to SQLAlchemy model
-    new_task = DBTask(**task.model_dump()) 
+    new_task = DBPwn(**task.model_dump()) 
     
     db.add(new_task)        # Add to session
     db.commit()             # Save to database
     db.refresh(new_task)    # Get the new ID assigned by Postgres
     
     return new_task
+
+@router.delete("/{pwn_id}")
+def delete_pwn(pwn_id: int, db: Session = Depends(get_db)):
+    """Delete a specific task by its ID."""
+    task = db.query(DBPwn).filter(DBPwn.id == pwn_id).first()
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    db.delete(task)  # Delete the task from the session
+    db.commit()      # Commit the transaction to delete from database
+    
+    return {"detail": "Task deleted successfully"}
 
 
