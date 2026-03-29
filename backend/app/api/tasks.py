@@ -13,6 +13,7 @@ class TaskCreate(BaseModel):
     title: str
     description: Optional[str] = None
     completed: bool = False
+    project_id: Optional[int] = None  # NEW: Optional field to link to a project
 
 class TaskResponse(TaskCreate):
     id: int
@@ -50,5 +51,22 @@ def create_task(task: TaskCreate, db: Session = Depends(get_db)):
     db.refresh(new_task)    # Get the new ID assigned by Postgres
     
     return new_task
+
+@router.put("/{task_id}", response_model=TaskResponse)
+def update_task(task_id: int, task: TaskCreate, db: Session = Depends(get_db)):
+    """Update an existing task."""
+    existing_task = db.query(DBTask).filter(DBTask.id == task_id).first()
+    if existing_task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    # Update fields
+    existing_task.title = task.title
+    existing_task.description = task.description
+    existing_task.completed = task.completed
+    
+    db.commit()  # Save changes to database
+    db.refresh(existing_task)  # Refresh to get updated data
+    
+    return existing_task
 
 
